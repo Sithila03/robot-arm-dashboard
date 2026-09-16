@@ -1,1 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robotic Arm Command Center</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap');
+        
+        :root {
+            --bg: #0f172a; --panel: rgba(30, 41, 59, 0.7);
+            --accent: #06b6d4; --danger: #ef4444; --success: #10b981; --text: #f8fafc;
+        }
+        body {
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at 50% -20%, #1e293b, #0f172a);
+            color: var(--text); font-family: 'Rajdhani', sans-serif;
+            margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+        }
+        h1 { text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px var(--accent); margin-bottom: 30px; text-align: center;}
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 1200px; }
+        .panel { background: var(--panel); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+        .panel h2 { border-bottom: 2px solid var(--accent); padding-bottom: 10px; margin-top: 0; }
+        button { background: rgba(255,255,255,0.05); border: 1px solid var(--accent); color: var(--text); padding: 10px 20px; border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 1.1rem; font-weight: bold; transition: all 0.3s; margin: 5px; text-transform: uppercase; width: 100%; box-sizing: border-box; }
+        button:hover { background: var(--accent); box-shadow: 0 0 15px var(--accent); color: var(--bg); }
+        .btn-danger { border-color: var(--danger); } .btn-danger:hover { background: var(--danger); box-shadow: 0 0 15px var(--danger); }
+        .btn-success { border-color: var(--success); } .btn-success:hover { background: var(--success); box-shadow: 0 0 15px var(--success); }
+        .d-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: max-content; margin: 20px auto; }
+        .d-pad button { margin: 0; height: 50px; width: 70px; }
+        .empty { visibility: hidden; }
+        input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 10px; border-radius: 5px; font-family: inherit; width: calc(100% - 24px); margin-bottom: 10px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat-card { background: rgba(0,0,0,0.4); padding: 20px; border-radius: 10px; text-align: center; border-left: 4px solid var(--accent); }
+        .stat-card.red { border-left-color: #ef4444; } .stat-card.green { border-left-color: #10b981; } .stat-card.blue { border-left-color: #3b82f6; }
+        .stat-val { font-size: 2.5rem; font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Robotic Arm Command Center</h1>
+    <div class="dashboard">
+        <div class="panel">
+            <h2>System Mode</h2>
+            <button class="btn-danger" onclick="sendCommand('R')">EMERGENCY STOP (R)</button>
+            <button onclick="sendCommand('M')">Manual Mode (M)</button>
+            <button class="btn-success" onclick="sendCommand('T')">Start Auto Scan (T)</button>
+            <h2 style="margin-top: 20px;">Target Configuration</h2>
+            <input type="text" id="colorInput" placeholder="e.g., BLUE,GREEN or RED">
+            <button onclick="sendTargetColors()">Set Colors</button>
+            <h2 style="margin-top: 20px;">IK Target (X,Y)</h2>
+            <input type="text" id="ikInput" placeholder="e.g., 12.0,5.0">
+            <button onclick="sendIK()">Move to X,Y</button>
+        </div>
+        <div class="panel">
+            <h2>Manual Override</h2>
+            <p style="text-align: center; opacity: 0.7;">Requires Manual Mode (M) Active</p>
+            <h3 style="text-align: center; margin-bottom: 0;">Base & Shoulder</h3>
+            <div class="d-pad">
+                <div class="empty"></div><button onclick="sendCommand('W')">W</button><div class="empty"></div>
+                <button onclick="sendCommand('A')">A</button><button onclick="sendCommand('S')">S</button><button onclick="sendCommand('D')">D</button>
+            </div>
+            <h3 style="text-align: center; margin-bottom: 0;">Elbow & Gripper</h3>
+            <div class="d-pad">
+                <button onclick="sendCommand('J')">G+</button><button onclick="sendCommand('I')">E+</button><button onclick="sendCommand('L')">G-</button>
+                <div class="empty"></div><button onclick="sendCommand('K')">E-</button><div class="empty"></div>
+            </div>
+        </div>
+        <div class="panel">
+            <h2>Objects Sorted</h2>
+            <div class="stats-grid">
+                <div class="stat-card blue"><div>BLUE</div><div class="stat-val" id="count-BLUE">0</div></div>
+                <div class="stat-card green"><div>GREEN</div><div class="stat-val" id="count-GREEN">0</div></div>
+                <div class="stat-card red"><div>RED</div><div class="stat-val" id="count-RED">0</div></div>
+                <div class="stat-card"><div>TOTAL</div><div class="stat-val" id="count-TOTAL">0</div></div>
+            </div>
+        </div>
+    </div>
 
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDdFRWRHIZ-vVNu3tpp3XNgTIR9CDxtB60",
+            databaseURL: "https://robot-arm-f4a5c-default-rtdb.asia-southeast1.firebasedatabase.app/", 
+            projectId: "robot-arm-f4a5c" 
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function sendCommand(cmd) {
+            db.ref('commands/latest').set({
+                cmd: cmd,
+                timestamp: Math.floor(Date.now() / 1000) // Changed to seconds here!
+            });
+        }
+
+        function sendTargetColors() {
+            const val = document.getElementById('colorInput').value.trim().toUpperCase();
+            if(val) sendCommand(val);
+        }
+
+        function sendIK() {
+            const val = document.getElementById('ikInput').value.trim();
+            if(val) sendCommand(val);
+        }
+
+        db.ref('counters').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById('count-BLUE').innerText = data.BLUE || 0;
+                document.getElementById('count-GREEN').innerText = data.GREEN || 0;
+                document.getElementById('count-RED').innerText = data.RED || 0;
+                document.getElementById('count-TOTAL').innerText = (data.BLUE || 0) + (data.GREEN || 0) + (data.RED || 0);
+            }
+        });
+    </script>
+</body>
+</html>
