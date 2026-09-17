@@ -1,118 +1,399 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robotic Arm Command Center</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap');
-        
-        :root {
-            --bg: #0f172a; --panel: rgba(30, 41, 59, 0.7);
-            --accent: #06b6d4; --danger: #ef4444; --success: #10b981; --text: #f8fafc;
-        }
-        body {
-            background-color: var(--bg);
-            background-image: radial-gradient(circle at 50% -20%, #1e293b, #0f172a);
-            color: var(--text); font-family: 'Rajdhani', sans-serif;
-            margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh;
-        }
-        h1 { text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px var(--accent); margin-bottom: 30px; text-align: center;}
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 1200px; }
-        .panel { background: var(--panel); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-        .panel h2 { border-bottom: 2px solid var(--accent); padding-bottom: 10px; margin-top: 0; }
-        button { background: rgba(255,255,255,0.05); border: 1px solid var(--accent); color: var(--text); padding: 10px 20px; border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 1.1rem; font-weight: bold; transition: all 0.3s; margin: 5px; text-transform: uppercase; width: 100%; box-sizing: border-box; }
-        button:hover { background: var(--accent); box-shadow: 0 0 15px var(--accent); color: var(--bg); }
-        .btn-danger { border-color: var(--danger); } .btn-danger:hover { background: var(--danger); box-shadow: 0 0 15px var(--danger); }
-        .btn-success { border-color: var(--success); } .btn-success:hover { background: var(--success); box-shadow: 0 0 15px var(--success); }
-        .d-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: max-content; margin: 20px auto; }
-        .d-pad button { margin: 0; height: 50px; width: 70px; }
-        .empty { visibility: hidden; }
-        input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 10px; border-radius: 5px; font-family: inherit; width: calc(100% - 24px); margin-bottom: 10px; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .stat-card { background: rgba(0,0,0,0.4); padding: 20px; border-radius: 10px; text-align: center; border-left: 4px solid var(--accent); }
-        .stat-card.red { border-left-color: #ef4444; } .stat-card.green { border-left-color: #10b981; } .stat-card.blue { border-left-color: #3b82f6; }
-        .stat-val { font-size: 2.5rem; font-weight: bold; margin: 10px 0; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robotic Arm Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --bg:#080c16;
+        --bg-grid:#0d1424;
+        --panel:#0f1728;
+        --panel-alt:#0b1220;
+        --border:#1e2b45;
+        --border-soft:#162236;
+        --text:#dbe4f0;
+        --text-dim:#5c6c85;
+        --text-faint:#3a4762;
+        --cyan:#22d3ee;
+        --cyan-dim:#0e6f83;
+        --green:#34d399;
+        --red:#ef4444;
+        --amber:#f5a524;
+        --blue:#3b82f6;
+    }
+
+    *{box-sizing:border-box;}
+
+    body{
+        margin:0;
+        padding:32px 20px 60px;
+        background:
+            linear-gradient(rgba(34,211,238,0.035) 1px, transparent 1px) 0 0/100% 42px,
+            radial-gradient(ellipse at 50% -10%, #0e1c33 0%, var(--bg) 55%);
+        color:var(--text);
+        font-family:'Rajdhani', 'Segoe UI', sans-serif;
+        display:flex;
+        justify-content:center;
+    }
+
+    .shell{ max-width:1280px; width:100%; }
+
+    /* ---------- HEADER ---------- */
+    header{ text-align:center; margin-bottom:28px; }
+    header h1{
+        font-family:'Chakra Petch', sans-serif;
+        font-size:clamp(24px, 4vw, 36px);
+        font-weight:700;
+        letter-spacing:3px;
+        margin:0;
+        color:#f2f6fb;
+        text-shadow:0 0 18px rgba(34,211,238,0.35);
+    }
+    header .rule{
+        width:220px; height:2px; margin:14px auto 0;
+        background:linear-gradient(90deg, transparent, var(--cyan), transparent);
+    }
+    header .sub{
+        margin-top:10px; font-size:13px; letter-spacing:2px; color:var(--text-dim);
+        text-transform:uppercase;
+    }
+
+    /* ---------- LAYOUT ---------- */
+    .grid3{
+        display:grid;
+        grid-template-columns:1.15fr 1fr 1fr;
+        gap:20px;
+        margin-bottom:22px;
+    }
+    @media (max-width:980px){ .grid3{ grid-template-columns:1fr; } }
+
+    /* ---------- PANEL ---------- */
+    .panel{
+        background:var(--panel);
+        border:1px solid var(--border);
+        border-radius:10px;
+        padding:22px;
+        position:relative;
+    }
+    .panel::before{
+        content:"";
+        position:absolute; top:0; left:16px; right:16px; height:1px;
+        background:linear-gradient(90deg, transparent, rgba(34,211,238,0.5), transparent);
+    }
+    .panel h3{
+        font-family:'Chakra Petch', sans-serif;
+        margin:0 0 16px;
+        font-size:14px;
+        letter-spacing:2px;
+        font-weight:600;
+        color:var(--cyan);
+        text-transform:uppercase;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        border-bottom:1px solid var(--border-soft);
+        padding-bottom:12px;
+    }
+    .panel h3 .tag{
+        font-size:10px; letter-spacing:1.5px; color:var(--text-faint); font-weight:500;
+    }
+
+    /* ---------- BUTTONS ---------- */
+    .btn{
+        font-family:'Rajdhani', sans-serif;
+        letter-spacing:1.5px;
+        text-transform:uppercase;
+        font-weight:600;
+        font-size:14px;
+        padding:12px 18px;
+        border-radius:6px;
+        cursor:pointer;
+        transition:filter .15s, transform .1s, background .15s;
+        background:transparent;
+    }
+    .btn:active{ transform:scale(0.97); }
+    .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+    .btn-stop{
+        width:100%; padding:16px; font-size:16px;
+        background:linear-gradient(180deg,#f0555a,#d33236);
+        border:1px solid #ff8286;
+        color:#fff;
+        box-shadow:0 0 22px rgba(239,68,68,0.35);
+        margin-bottom:14px;
+    }
+    .btn-stop:hover{ filter:brightness(1.08); }
+
+    .btn-outline{
+        border:1px solid var(--border);
+        color:var(--text);
+        background:var(--panel-alt);
+    }
+    .btn-outline:hover{ border-color:var(--cyan-dim); color:#fff; }
+    .btn-outline.active-manual{ border-color:var(--blue); color:var(--blue); background:rgba(59,130,246,0.08); }
+    .btn-outline.active-auto{ border-color:var(--green); color:var(--green); background:rgba(52,211,153,0.08); }
+
+    .btn-solid-blue{ background:var(--blue); color:#fff; border:1px solid #5b98fa; }
+    .btn-solid-blue:hover{ filter:brightness(1.1); }
+
+    .mode-row{ display:flex; gap:10px; }
+    .mode-row .btn{ flex:1; }
+
+    /* ---------- STATUS STRIP ---------- */
+    .status-strip{
+        display:grid; grid-template-columns:1fr 1fr; gap:10px;
+        background:var(--panel-alt); border:1px solid var(--border-soft);
+        border-radius:6px; padding:12px 14px; margin-bottom:16px;
+        font-size:12px; letter-spacing:1px; text-transform:uppercase; color:var(--text-dim);
+    }
+    .status-strip b{ display:block; margin-top:2px; font-size:15px; letter-spacing:1px; }
+
+    /* ---------- TARGET / IK INPUTS ---------- */
+    .field-row{ display:flex; gap:10px; margin-top:14px; }
+    .field-row input{
+        flex:1; min-width:0;
+        background:var(--panel-alt); border:1px solid var(--border);
+        color:var(--text); padding:11px 12px; border-radius:6px;
+        font-family:'Rajdhani', sans-serif; font-size:14px; letter-spacing:0.5px;
+        text-transform:uppercase;
+    }
+    .field-row input::placeholder{ color:var(--text-faint); text-transform:none; }
+    .field-row input:focus{ outline:none; border-color:var(--cyan-dim); }
+    .field-row input:disabled{ background:#0a1120; color:var(--text-faint); }
+
+    .section-label{ font-size:12px; letter-spacing:1.5px; color:var(--text-dim); text-transform:uppercase; margin:20px 0 0; }
+    .warning{ font-size:11.5px; margin-top:6px; letter-spacing:0.5px; }
+
+    /* ---------- D-PAD ---------- */
+    .jog-wrapper{ display:flex; justify-content:space-around; gap:10px; flex-wrap:wrap; }
+    .jog-block{ text-align:center; }
+    .jog-block .label{ font-size:11px; letter-spacing:1.5px; color:var(--text-dim); text-transform:uppercase; }
+    .d-pad{
+        display:grid; grid-template-columns:44px 44px 44px; grid-template-rows:44px 44px;
+        gap:6px; justify-items:center; margin-top:12px;
+    }
+    .btn-dpad{
+        width:44px; height:44px; background:var(--panel-alt); color:var(--text);
+        border:1px solid var(--border); border-radius:6px; font-weight:700;
+        font-family:'Chakra Petch', sans-serif; cursor:pointer; font-size:13px;
+    }
+    .btn-dpad:hover{ border-color:var(--cyan-dim); color:var(--cyan); }
+    .btn-dpad:active{ background:#16233b; }
+    .btn-dpad.up{ grid-column:2; grid-row:1; }
+    .btn-dpad.left{ grid-column:1; grid-row:2; }
+    .btn-dpad.down{ grid-column:2; grid-row:2; }
+    .btn-dpad.right{ grid-column:3; grid-row:2; }
+
+    /* ---------- STATS ---------- */
+    .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .stat-badge{
+        background:var(--panel-alt); border:1px solid var(--border-soft);
+        border-left:3px solid var(--cyan); border-radius:6px; padding:14px 16px;
+    }
+    .stat-badge .name{ font-size:11px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; }
+    .stat-badge .count{ font-family:'Chakra Petch', sans-serif; font-size:28px; font-weight:700; margin-top:4px; color:#fff; }
+    .stats-empty{ color:var(--text-faint); padding:14px 2px; font-size:13px; grid-column:1 / -1; }
+
+    /* ---------- TERMINAL ---------- */
+    .terminal-box{
+        background:#020509; color:#3ee06f; font-family:'Courier New', monospace;
+        height:150px; overflow-y:auto; padding:12px; border-radius:6px; font-size:13px;
+        margin-bottom:10px; text-align:left; border:1px solid var(--border-soft);
+    }
+    .terminal-input-group{ display:flex; gap:10px; }
+    .terminal-input-group input{
+        flex:1; padding:11px 12px; background:var(--panel-alt); border:1px solid var(--border);
+        color:var(--text); border-radius:6px; font-family:'Rajdhani', sans-serif; letter-spacing:0.5px;
+    }
+    .terminal-input-group input:focus{ outline:none; border-color:var(--cyan-dim); }
+</style>
 </head>
 <body>
-    <h1>Robotic Arm Command Center</h1>
-    <div class="dashboard">
+
+<div class="shell">
+
+    <header>
+        <h1>ROBOTIC ARM COMMAND CENTER</h1>
+        <div class="rule"></div>
+        <div class="sub">Live Telemetry &middot; Manual &amp; Autonomous Control</div>
+    </header>
+
+    <!-- ================= 3-COLUMN CONTROL DECK ================= -->
+    <div class="grid3">
+
+        <!-- SYSTEM MODE + TARGETS + IK -->
         <div class="panel">
-            <h2>System Mode</h2>
-            <button class="btn-danger" onclick="sendCommand('R')">EMERGENCY STOP (R)</button>
-            <button onclick="sendCommand('M')">Manual Mode (M)</button>
-            <button class="btn-success" onclick="sendCommand('T')">Start Auto Scan (T)</button>
-            <h2 style="margin-top: 20px;">Target Configuration</h2>
-            <input type="text" id="colorInput" placeholder="e.g., BLUE,GREEN or RED">
-            <button onclick="sendTargetColors()">Set Colors</button>
-            <h2 style="margin-top: 20px;">IK Target (X,Y)</h2>
-            <input type="text" id="ikInput" placeholder="e.g., 12.0,5.0">
-            <button onclick="sendIK()">Move to X,Y</button>
-        </div>
-        <div class="panel">
-            <h2>Manual Override</h2>
-            <p style="text-align: center; opacity: 0.7;">Requires Manual Mode (M) Active</p>
-            <h3 style="text-align: center; margin-bottom: 0;">Base & Shoulder</h3>
-            <div class="d-pad">
-                <div class="empty"></div><button onclick="sendCommand('W')">W</button><div class="empty"></div>
-                <button onclick="sendCommand('A')">A</button><button onclick="sendCommand('S')">S</button><button onclick="sendCommand('D')">D</button>
+            <h3>System Mode</h3>
+
+            <div class="status-strip">
+                <div>Mode<b id="uiMode" style="color:var(--amber);">STOPPED</b></div>
+                <div>Targets<b id="uiTarget" style="color:var(--blue);">NONE</b></div>
             </div>
-            <h3 style="text-align: center; margin-bottom: 0;">Elbow & Gripper</h3>
-            <div class="d-pad">
-                <button onclick="sendCommand('J')">G+</button><button onclick="sendCommand('I')">E+</button><button onclick="sendCommand('L')">G-</button>
-                <div class="empty"></div><button onclick="sendCommand('K')">E-</button><div class="empty"></div>
+
+            <button class="btn btn-stop" onclick="sendCommand('R', 'EMERGENCY STOP')">&#10746; EMERGENCY STOP (R)</button>
+            <div class="mode-row">
+                <button class="btn btn-outline" id="btnManual" onclick="sendCommand('M', 'MANUAL MODE')">Manual (M)</button>
+                <button class="btn btn-outline" id="btnAuto" onclick="sendCommand('T', 'AUTONOMOUS MODE')">Autonomous (T)</button>
+            </div>
+
+            <div class="section-label">Target Configuration</div>
+            <div class="field-row">
+                <input type="text" id="colorInput" placeholder="e.g. BLUE,GREEN">
+                <button class="btn btn-solid-blue" onclick="sendColors()">Set</button>
+            </div>
+
+            <div class="section-label">IK Target (X, Y)</div>
+            <p class="warning" id="ikWarning" style="color:var(--red);">Enable Manual Mode (M) to enter coordinates.</p>
+            <div class="field-row">
+                <input type="number" id="ikX" placeholder="X (cm)" disabled>
+                <input type="number" id="ikY" placeholder="Y (cm)" disabled>
+                <button class="btn btn-solid-blue" id="ikBtn" disabled onclick="sendIK()">Go</button>
             </div>
         </div>
+
+        <!-- MANUAL OVERRIDE -->
         <div class="panel">
-            <h2>Objects Sorted</h2>
-            <div class="stats-grid">
-                <div class="stat-card blue"><div>BLUE</div><div class="stat-val" id="count-BLUE">0</div></div>
-                <div class="stat-card green"><div>GREEN</div><div class="stat-val" id="count-GREEN">0</div></div>
-                <div class="stat-card red"><div>RED</div><div class="stat-val" id="count-RED">0</div></div>
-                <div class="stat-card"><div>TOTAL</div><div class="stat-val" id="count-TOTAL">0</div></div>
+            <h3>Manual Override <span class="tag">Requires Manual Mode</span></h3>
+            <div class="jog-wrapper">
+                <div class="jog-block">
+                    <div class="label">Base &amp; Shoulder</div>
+                    <div class="d-pad">
+                        <button class="btn-dpad up" onclick="sendCommand('W')">W</button>
+                        <button class="btn-dpad left" onclick="sendCommand('A')">A</button>
+                        <button class="btn-dpad down" onclick="sendCommand('S')">S</button>
+                        <button class="btn-dpad right" onclick="sendCommand('D')">D</button>
+                    </div>
+                </div>
+                <div class="jog-block">
+                    <div class="label">Elbow &amp; Gripper</div>
+                    <div class="d-pad">
+                        <button class="btn-dpad up" onclick="sendCommand('I')">I</button>
+                        <button class="btn-dpad left" onclick="sendCommand('J')">J</button>
+                        <button class="btn-dpad down" onclick="sendCommand('K')">K</button>
+                        <button class="btn-dpad right" onclick="sendCommand('L')">L</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OBJECTS SORTED -->
+        <div class="panel">
+            <h3>Objects Sorted</h3>
+            <div class="stats-grid" id="statsContainer">
+                <div class="stats-empty">Waiting for first sorted object in this session...</div>
             </div>
         </div>
     </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDdFRWRHIZ-vVNu3tpp3XNgTIR9CDxtB60",
-            databaseURL: "https://robot-arm-f4a5c-default-rtdb.asia-southeast1.firebasedatabase.app/", 
-            projectId: "robot-arm-f4a5c" 
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    <!-- ================= TERMINAL ================= -->
+    <div class="panel">
+        <h3>Terminal / Serial Output</h3>
+        <div class="terminal-box" id="terminal">
+            <div>&gt; WebApp Initialized. Connecting to Firebase...</div>
+        </div>
+        <div class="terminal-input-group">
+            <input type="text" id="termInput" placeholder="Command (e.g. R, M, 12,5)..." onkeypress="handleTerminalEnter(event)">
+            <button class="btn btn-solid-blue" onclick="sendFromTerminal()">Send</button>
+        </div>
+    </div>
 
-        function sendCommand(cmd) {
-            db.ref('commands/latest').set({
-                cmd: cmd,
-                timestamp: Math.floor(Date.now() / 1000) // Changed to seconds here!
-            });
-        }
+</div>
 
-        function sendTargetColors() {
-            const val = document.getElementById('colorInput').value.trim().toUpperCase();
-            if(val) sendCommand(val);
-        }
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        function sendIK() {
-            const val = document.getElementById('ikInput').value.trim();
-            if(val) sendCommand(val);
-        }
+    const firebaseConfig = {
+        apiKey: "AIzaSyAzvBGo7jcg0kZNe-GqHgfYMM8ocNIk6iI",
+        databaseURL: "https://robo-arm-41afc-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "robo-arm-41afc"
+    };
 
-        db.ref('counters').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                document.getElementById('count-BLUE').innerText = data.BLUE || 0;
-                document.getElementById('count-GREEN').innerText = data.GREEN || 0;
-                document.getElementById('count-RED').innerText = data.RED || 0;
-                document.getElementById('count-TOTAL').innerText = (data.BLUE || 0) + (data.GREEN || 0) + (data.RED || 0);
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- SESSION STATS GENERATOR ---
+    onValue(ref(db, 'arm/stats'), (snapshot) => {
+        const data = snapshot.val();
+        const container = document.getElementById('statsContainer');
+        if(data) {
+            container.innerHTML = "";
+            for (const [colorName, count] of Object.entries(data)) {
+                let badgeColor = "#34d399";
+                if(colorName === "RED") badgeColor = "#ef4444";
+                else if(colorName === "BLUE") badgeColor = "#3b82f6";
+                else if(colorName === "YELLOW") badgeColor = "#f5a524";
+
+                container.innerHTML += `
+                    <div class="stat-badge" style="border-left-color: ${badgeColor};">
+                        <div class="name">${colorName}</div>
+                        <div class="count" style="color:${badgeColor};">${count}</div>
+                    </div>
+                `;
             }
-        });
-    </script>
+        } else {
+            container.innerHTML = `<div class="stats-empty">Waiting for first sorted object in this session...</div>`;
+        }
+    });
+
+    // --- TERMINAL & CONTROLS ---
+    function logTerminal(msg) {
+        const term = document.getElementById('terminal');
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+        term.innerHTML += `<div><span style="color:#3a4762">[${time}]</span> ${msg}</div>`;
+        term.scrollTop = term.scrollHeight;
+    }
+
+    window.sendCommand = function(cmd, desc = "") {
+        set(ref(db, 'arm/command'), cmd);
+        let logMsg = `&gt; TX: ${cmd}`; if(desc) logMsg += ` (${desc})`; logTerminal(logMsg);
+
+        const btnManual = document.getElementById('btnManual');
+        const btnAuto = document.getElementById('btnAuto');
+
+        if(cmd === 'M') {
+            document.getElementById('uiMode').innerText = "MANUAL";
+            document.getElementById('uiMode').style.color = "#3b82f6";
+            document.getElementById('ikX').disabled = false; document.getElementById('ikY').disabled = false; document.getElementById('ikBtn').disabled = false;
+            document.getElementById('ikWarning').innerText = "Manual mode active. IK inputs enabled."; document.getElementById('ikWarning').style.color = "#34d399";
+            btnManual.classList.add('active-manual'); btnAuto.classList.remove('active-auto');
+        }
+        else if (cmd === 'T' || cmd === 'R') {
+            document.getElementById('uiMode').innerText = cmd === 'T' ? "AUTONOMOUS" : "STOPPED";
+            document.getElementById('uiMode').style.color = cmd === 'T' ? "#34d399" : "#ef4444";
+            document.getElementById('ikX').disabled = true; document.getElementById('ikY').disabled = true; document.getElementById('ikBtn').disabled = true;
+            document.getElementById('ikWarning').innerText = "Enable Manual Mode (M) to enter coordinates."; document.getElementById('ikWarning').style.color = "#ef4444";
+            btnManual.classList.remove('active-manual');
+            if(cmd === 'T'){ btnAuto.classList.add('active-auto'); } else { btnAuto.classList.remove('active-auto'); }
+        }
+        setTimeout(() => set(ref(db, 'arm/command'), ""), 500);
+    };
+
+    window.sendColors = function() {
+        let colors = document.getElementById("colorInput").value.toUpperCase();
+        if(colors !== "") {
+            window.sendCommand(colors, "TARGET COLORS UPDATED");
+            document.getElementById('uiTarget').innerText = colors;
+            document.getElementById("colorInput").value = "";
+        }
+    };
+
+    window.sendIK = function() {
+        let x = document.getElementById("ikX").value; let y = document.getElementById("ikY").value;
+        if(x !== "" && y !== "") {
+            window.sendCommand(`${x},${y}`, `IK MOVE TO X:${x}, Y:${y}`);
+            document.getElementById("ikX").value = ""; document.getElementById("ikY").value = "";
+        }
+    };
+    window.sendFromTerminal = function() {
+        let input = document.getElementById("termInput");
+        if(input.value !== "") { window.sendCommand(input.value.toUpperCase(), "TERMINAL ENTRY"); input.value = ""; }
+    };
+    window.handleTerminalEnter = function(e) { if(e.key === 'Enter') window.sendFromTerminal(); };
+</script>
 </body>
 </html>
